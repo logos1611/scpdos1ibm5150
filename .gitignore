@@ -1,0 +1,44 @@
+# macOS
+.DS_Store
+
+# Editor / OS noise
+*.swp
+*~
+
+# External materials that must NOT be in git for copyright reasons.
+# The build scripts expect these at sibling paths but they are user-supplied:
+#
+#   build/refs/PCDOS100.img       <- IBM 1981
+#   build/refs/IBMBIO.COM          <- IBM 1981
+#   build/refs/IBMDOS_PCDOS100.COM <- IBM 1981
+#   build/refs/BOOT_PCDOS100.bin   <- IBM 1981
+#   build/tools/ASM.COM            <- SCP
+#   build/tools/HEX2BIN.COM        <- SCP
+#   build/86box-vm/                <- contains 86Box ROMs (IBM)
+#   build/burners/                 <- third-party tools
+#
+# Defensive: never accidentally check these in if user clones into this dir.
+build/refs/
+build/tools/
+build/86box-vm/
+build/burners/
+build/captures/
+build/work/
+build/bin/
+
+# Build outputs containing IBM code (don't redistribute)
+build/images/HYBRID.IMG
+build/images/hybrid.img
+build/images/SELFBOOT.IMG
+build/images/selfboot.img
+build/images/PCDOS100.IMG
+build/images/pcdos100_original.img
+build/images/test_boot.img
+build/images/hybrid.zip
+
+# Distribution bundles (user-built, contain IBM code)
+dist/
+*.zip
+
+# But explicitly KEEP HELLO.IMG (our code only)
+!images/HELLO.IMG

@@ -1,0 +1,287 @@
+IBM 5150 실기 테스트 절차 (2026-05-02 예정)
+=================================================================
+
+준비된 디스켓 이미지 4종, 모두 동일한 160KB SSDD 지오메트리
+(40 cyl × 1 head × 8 spt × 512 B):
+
+  1. hello.img              -- 진단용 미니멀 부트섹터
+                               ("5150 OK / DRV=0 / READY" 출력 후 정지)
+                               파일/FAT 없음, 부트섹터만 + 0xAA55 시그니처
+                               sha256: fe5c881ceadfecf835eb5a4dcfdf1f017ebc719c8972c8167d797b5ef114db4f
+
+  2. pcdos100_original.img  -- 정품 IBM PC-DOS 1.00 (1981) 그대로
+                               PCjs archive 디스크 dump → flat 변환
+                               부트섹터+IBMBIO+IBMDOS+COMMAND 모두 IBM 1981 정품
+                               *** 코드 vs 매체 문제 분기를 위한 reference ***
+                               sha256: 29a4c5eb355b2bfb1dbbece96d91eabc5c1331c6299437d00dd8d862ac126eb2
+
+  3. hybrid.img             -- IBM PC-DOS 1.00 (부트섹터+IBMBIO+COMMAND) +
+                               우리가 Paterson 1981-07-07 소스로 빌드한 IBMDOS
+                               LBA 21-22 일부 (~600B)만 정품과 다름
+                               sha256: 930da2b03c6f3f5c85a6485f6f4152e7e64d7cca5721dc7ba7ee21c3a44c9e78
+
+  4. selfboot.img           -- 풀스택 자체빌드 (부트섹터+IBMBIO+IBMDOS 전부 우리 코드)
+                               Paterson 소스 + 우리 자작 BIOS 레이어
+                               sha256: 02c9b73a119895661eeba84ba30ecee941a931dfcb1850e1626778b1eba56fdd
+
+테스트 순서:
+  hello → pcdos100_original → hybrid → selfboot
+   ↓         ↓                  ↓        ↓
+   매체     매체+드라이브       우리      우리 부트섹터
+   확인     +1981 부팅 검증     IBMDOS    +IBMBIO 검증
+                                검증
+
+진단 분기:
+  hello.img 부팅 OK + pcdos100 부팅 OK ≡ 매체/드라이브 모두 OK
+                                          → hybrid/selfboot 차이가 우리 코드 문제
+  hello.img 부팅 OK + pcdos100 부팅 X   ≡ 매체 OK, 드라이브 헤드 정렬 의심
+                                          (DOS 1.0 부트섹터 INT 13h 호출 패턴이
+                                           DOS 3.3보다 헤드 정렬에 민감)
+  hello.img 부팅 X                        ≡ 매체 또는 드라이브 자체 문제
+                                          (소프트웨어로 해결 불가)
+
+
+[0단계] 5단계 시작 전 확인사항
+=================================================================
+- 펜티엄 DOS 6.0 부팅 상태
+- 5.25" DD 매체 (라벨 "DSDD" / "2D" / "360K" — 절대 "HD" / "1.2MB" 아님)
+- 매체 노치 열림 (쓰기 가능)
+- 5150 전원 OFF 상태 (콜드부팅 위해)
+- DOS 3.3 디스켓 지참 (5150 정상성 확인용)
+
+
+[1단계] DOS 3.3 디스켓 정체 확인 (가장 중요)
+=================================================================
+어떤 형식인지 알면 5150 BIOS가 무엇을 지원하는지 추론 가능.
+
+펜티엄에 DOS 3.3 디스켓 넣고:
+
+    A:\> CHKDSK A:
+
+총 용량 출력 확인:
+  - 163,840 bytes total disk space  → 160KB SSDD (8spt × 1head × 40cyl)
+                                       원조 5150 BIOS도 부팅 가능
+  - 184,320 bytes total disk space  → 180KB SSDD (9spt × 1head × 40cyl)
+                                       BIOS 1981-10-19 이후 필요
+  - 327,680 bytes total disk space  → 320KB DSDD (8spt × 2head × 40cyl)
+                                       BIOS 1981-10-19 이후
+  - 368,640 bytes total disk space  → 360KB DSDD (9spt × 2head × 40cyl)
+                                       BIOS 1982-10-27 이후
+
+  → 결과 메모: __________
+
+160KB가 아니면 5150 BIOS가 9spt 또는 양면을 지원하는 후기 BIOS 의미.
+180KB+360KB가 보이면 BIOS는 신형이고, 우리 hybrid.img 8spt 단면도 무리 없이 읽힘.
+
+
+[2단계] hello.img 굽기 (가장 단순한 테스트)
+=================================================================
+
+  C:\> CD \DISKIMG  (또는 hello.img 있는 폴더)
+
+  C:\DISKIMG> FORMAT A: /F:160
+                              포맷 확인 라인에 "163840 bytes" 출력 확인
+
+  C:\DISKIMG> CHKDSK A:
+                              163840 확인
+
+  C:\DISKIMG> RAWRITE -f hello.img -d A:
+              또는 인터랙티브:
+  C:\DISKIMG> RAWRITE
+              Source: hello.img
+              Dest:   A:
+
+굽기 완료 후 그 디스켓 5150에 넣고 콜드 부팅:
+
+  기대 결과 (CGA 또는 MDA 화면, 좌상단):
+    5150 OK
+    DRV=0
+    READY
+
+  → 보이면: 매체 + 굽기 + 5150 부트셔터 호환성 OK
+            → 3단계로 (hybrid.img)
+  → 안 보이고 베이직으로 떨어지면: 매체/굽기 자체가 5150 호환 X
+            → [트러블슈팅] 섹션 참고
+
+
+[3단계] hybrid.img 굽기
+=================================================================
+2단계 hello.img가 성공했다는 가정 하에 진행.
+
+  C:\DISKIMG> FORMAT A: /F:160
+  C:\DISKIMG> RAWRITE -f hybrid.img -d A:
+
+5150에 넣고 콜드 부팅:
+
+  기대 결과:
+    The IBM Personal Computer DOS
+    Version 1.00 (C)Copyright IBM Corp 1981
+
+    Enter today's date (m-d-y): _
+
+  날짜 입력 (예: 4-30-26 후 엔터)
+    A>
+
+  A> DIR     ← 파일 목록 보임. CHKDSK, FORMAT, EDLIN 등
+  A> CHKDSK  ← 정상 종료
+  A> DATE
+
+  → 모두 OK면 정통 PC-DOS 1.00 (kernel은 우리가 Paterson 소스로 빌드)
+  → 부팅 안 되면 hello가 부팅된 케이스라 디스크 매체는 OK.
+                 부트섹터(PC-DOS 1.00 정품)와 IBMDOS 호환 문제.
+                 [트러블슈팅] 섹션 참고
+
+
+[4단계] selfboot.img 굽기 (풀스택 자체빌드)
+=================================================================
+3단계 hybrid.img 성공 가정.
+
+  C:\DISKIMG> FORMAT A: /F:160
+  C:\DISKIMG> RAWRITE -f selfboot.img -d A:
+
+5150에 넣고 콜드 부팅:
+
+  기대 결과 (화면 상단부터 순차적으로 찍힘):
+    ABCISKXD@@OT@@RC@@@@@@@@@@
+    Enter today's date (m-d-y): _
+
+  마커별 의미:
+    A B C   = 자작 부트섹터 (LBA 0..23 read 성공)
+    I S K   = 자작 IBMBIO INIT 진입
+    X       = Paterson IBMDOS의 DOSINIT 정상 복귀
+    D       = INT 21h Open 호출
+    @       = 자작 BIOSREAD 호출 (디스크 read)
+    O T R   = Open / SetDTA / BlockRead 단계 통과
+    C       = COMMAND.COM 진입 직전 (이 C는 마지막 마커)
+
+  성공 시: 부트섹터부터 끝까지 모든 코드가 우리 손으로 만든 5150 부팅
+
+  멈추는 위치별 추정:
+    "ABC" 만 → 부트섹터에서 실패 (드물 듯)
+    "ABCI" 까지 → IBMBIO INIT 진입 직후 멈춤
+    "ABCISK" → DOSINIT 호출 후 안 돌아옴
+    "ABCISKXD!" → 디스크 read는 가지만 BADCMD 도달
+
+    어디서 멈추든 그 위치를 알려주시면 됩니다 (86Box에서는 다 통과 검증 완료)
+
+
+[트러블슈팅]
+=================================================================
+
+증상 A. hello.img조차 부팅 안 됨, 5150이 카세트 BASIC으로 떨어짐
+   → 5150이 디스크 자체를 읽지 못함. 원인 후보:
+
+   A1. 매체 종류 (가장 흔함)
+       펜티엄 드라이브 자체가 DD라도 매체가 HD-rated이면
+       자성 차이로 5150에서 못 읽음. 확실한 DD/2D/360K 라벨 매체 필수.
+
+   A2. 펜티엄 드라이브의 헤드 폭
+       1.2MB HD 드라이브로 360KB 매체에 쓰면 트랙이 좁아 (96 TPI)
+       5150의 DD 헤드(48 TPI)가 못 읽음. 펜티엄 측 드라이브가 진짜
+       DD인지 모델명 확인 (TEAC FD-55B/BR/BV = DD; FD-55GFR = HD).
+
+   A3. 5150 측 드라이브 헤드 정렬 어긋남
+       30년 세월에 헤드가 기계적으로 어긋났을 가능성.
+       → DOS 3.3 디스켓이 부팅된다는 것 자체는 드라이브가 일부 정렬
+         되어 있다는 신호 (그래서 매체/굽기 측 의심이 우선).
+
+   A4. RAWRITE 작동 의심 — *반드시* 굽고 나서 펜티엄에서 다음 검증:
+
+       (a) DEBUG로 부트섹터 직접 읽어 비교:
+           C:\> DEBUG
+           -L 100 0 0 1                    ← drive 0(A:) sector 0 1개 메모리 100h에 로드
+           -D 100 L 20                     ← 처음 32바이트 덤프
+
+           hybrid.img이라면 시작이 "EB 2F 14 00 00 00 60 00..." 로 보여야 함
+           hello.img이라면  "8A E2 FA 33 C0 8E D8 8E..." 로 보여야 함
+
+           만약 0x00 0x00 0x00... 로만 보이면 RAWRITE가 안 쓴 것!
+           만약 다른 값(이전 디스크 내용)이면 RAWRITE 실행은 됐지만 sector 0
+           write가 실패한 것 — 디스켓 물리 첫 트랙 불량 가능성.
+
+       (b) DEBUG로 sector 1 (FAT) 도 보기:
+           -L 100 0 1 1
+           -D 100 L 20
+           hybrid.img라면 "FE FF 7F 00 00 00 00 00..." 같은 FAT12 패턴.
+           hello.img는 모두 0x00 (FAT 없음 — 정상).
+
+       (c) 끝 트랙(LBA 311 = cyl 38 head 0 sec 8)도 확인 가능:
+           -L 100 0 311 1
+           hybrid는 이 LBA에 COMMAND.COM 끝부분 데이터.
+
+       이 검증이 통과하면 굽기 자체는 OK이고 5150 측 매체/드라이브 문제로 좁혀짐.
+
+증상 B. hello.img는 부팅, hybrid.img는 베이직으로 떨어짐
+   → 매체 자체는 OK, 구체적으로 PC-DOS 1.0 부트섹터의 IBMBIO 검색이 실패.
+   → IBMBIO.COM 또는 IBMDOS.COM 이 디스크 정확한 위치에 안 써졌을 가능성.
+   → 디스켓을 펜티엄으로 다시 가져와 DIR /A 후 IBMBIO/IBMDOS 보이는지 확인.
+
+증상 C. hybrid.img 부팅, selfboot.img 베이직으로 떨어짐
+   → 우리 자작 부트섹터에 5150 호환 이슈 가능. 86Box에서는 모두 통과했지만
+     실기 BIOS 동작이 미세하게 다를 수도. 부트섹터의 INT 13h 호출 패턴 검토.
+
+증상 D. selfboot.img 화면에 ABC...만 나오고 "Enter today's date" 안 나옴
+   → 86Box에서는 통과했던 게 실기에서 일부 단계에서 멈춤. 멈춘 위치
+     알려주시면 그 단계 디버깅. 가능성:
+     - INT 13h 호출 시 5150 BIOS의 약간 다른 응답 패턴
+     - 메모리 크기 256KB 이하에서 DOSINIT 동작 차이
+     - 5150 ROM-BIOS 04/24/81 vs 후기 BIOS 차이
+
+
+[5150 BIOS 버전 확인]
+=================================================================
+캐세트 BASIC 진입 후 (스페이스 키 안 먹는 상태로) 다음 시도:
+
+  방법 A. 공백 없이 입력 시도:
+    DEFSEG=&HF000:FORI=&HFFF5TO&HFFFC:?CHR$(PEEK(I));:NEXT
+
+  방법 B. 본체 케이스 열어 메인보드 U33 ROM 칩 라벨 확인
+    "1501476" / "5700051" → 04/24/81 (오리지널)
+    "5700671"             → 10/19/81
+    후기                   → 10/27/82
+
+
+[펜티엄에서 가져갈 파일 목록]
+=================================================================
+/Users/logos1611/doshistory/build/images/ 안:
+
+  hello.img      163840 bytes  (진단용)
+  hybrid.img     163840 bytes  (Paterson 빌드 + 정품 IBMBIO)
+  selfboot.img   163840 bytes  (풀스택 자체빌드)
+
+3.5" 디스켓이나 CD-R 등으로 펜티엄 C 드라이브 어딘가에 복사.
+펜티엄에서 RAWRITE 또는 ImageDisk로 5.25" 디스켓에 굽기.
+
+
+[ImageDisk(IMD/BIN2IMD) 사용 시 보충]
+=================================================================
+RAWRITE이 잘 안 통할 경우 BIN2IMD 1.20 시도:
+
+  C:\> bin2imd hybrid.img hyb.imd N=8 SS=512 DM=5 /1
+       (T= 옵션 없음; 자동 추론)
+
+거부되면 옵션 위치 바꾸기:
+
+  C:\> bin2imd /1 N=8 SS=512 DM=5 hybrid.img hyb.imd
+
+또는 도움말 확인:
+
+  C:\> bin2imd /?
+  C:\> bin2imd
+
+생성된 .imd를 IMD.EXE로 디스켓에 굽기:
+
+  C:\> IMD
+       메뉴: Write disk → file=HYB.IMD → drive=A → Y
+
+IMD는 트랙별로 verify까지 하니 "verify error" 뜨면 그 트랙이 매체 불량.
+다른 디스켓으로 재시도.
+
+
+연락 시 알려주실 정보 (각 단계마다)
+=================================================================
+1. CHKDSK A: 의 "bytes total disk space" 숫자
+2. 5150 BIOS 버전 (chip 라벨 또는 BASIC PEEK 결과)
+3. 펜티엄 드라이브 모델명 (FD-55B / FD-55GFR 등)
+4. 사용 매체 라벨 ("DSDD" / "2D" / "360K" / "HD")
+5. 각 이미지별 5150 부팅 결과 (어디까지 진행, 어디서 멈춤)
