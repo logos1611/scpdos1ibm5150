@@ -228,7 +228,7 @@ HD 드라이브로 DD 굽기 (호환성 문제 있음):
 4. **읽기 자주 실패** → 5150 베이직으로 떨어짐
 
 해결:
-- 진짜 40-track DD 드라이브 (Sony SFD-500P 등) 확보
+- 진짜 40-track DD 드라이브 (Samsung SFD-500P 등) 확보
 - DD 드라이브로 굽으면 트랙 폭 5150과 일치 → 호환성 OK
 
 ### 5150 드라이브 정렬 드리프트
@@ -249,8 +249,8 @@ HD 드라이브로 DD 굽기 (호환성 문제 있음):
 
 1. ❌ 펜티엄 HD 드라이브로 RAWRITE3 → 형식 모름 에러
 2. ❌ 펜티엄 HD 드라이브로 IMD (Double-Step ON, 250→300) → 5150 베이직
-3. ❌ 486 + Sony SFD-500P DD 드라이브 → 486에서는 부팅 OK, 5150 한쪽 드라이브에서 베이직
-4. ✓ **486 + Sony SFD-500P + 5150의 다른 (정상) 드라이브** → **부팅 성공**
+3. ❌ 486 + Samsung SFD-500P DD 드라이브 → 486에서는 부팅 OK, 5150 한쪽 드라이브에서 베이직
+4. ✓ **486 + Samsung SFD-500P + 5150의 다른 (정상) 드라이브** → **부팅 성공**
 
 ---
 
@@ -410,7 +410,7 @@ dist/
 ✓ Tim Paterson의 1981-07-07 PC-DOS 1.00 dev 소스로부터 IBMDOS.COM 6211 byte 빌드
 ✓ 부트섹터 (132 byte) + IBMBIO (~400 byte) 직접 작성
 ✓ 86Box 에뮬레이터에서 풀스택 부팅 검증
-✓ ImageDisk + Sony SFD-500P DD 드라이브로 5150용 디스켓 굽기 성공
+✓ ImageDisk + Samsung SFD-500P DD 드라이브로 5150용 디스켓 굽기 성공
 ✓ **45년 된 IBM 5150 실기 (BIOS 04/24/81, 가장 오리지널 1981년 8월 ROM) 에서 SELFBOOT.IMG 완전 부팅** — 모든 마커 통과 + COMMAND.COM 진입 + Enter today's date prompt
 
 ### 1981년 PC-DOS 1.00 의 모든 코드 layer를 우리 손으로 재구성:
