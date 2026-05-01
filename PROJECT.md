@@ -6,6 +6,33 @@
 
 ---
 
+## 0. 원 저작소 및 이 프로젝트의 의도
+
+원 소스는 GitHub [**DOS-History/Paterson-Listings**](https://github.com/DOS-History/Paterson-Listings)
+저장소에 보존되어 있습니다. 이 저장소는 Tim Paterson 이 SCP (Seattle Computer Products)
+시절 작성한 86-DOS 와, 그것이 IBM 에 라이선스되어 PC-DOS 1.00 으로 출하되기 직전까지의
+개발 단계 소스 listings 을 종이 인쇄본을 스캔/필사한 것입니다. 1980-1981 년에 걸친
+여러 시점의 커널 스냅샷이 들어있고, 본 프로젝트가 빌드 대상으로 삼은 것은
+**1981-07-07 dev 버전** 입니다.
+
+**이 프로젝트의 의도는 단순합니다 — 저 코드를 실제 IBM 5150 에서 돌려보고 싶었습니다.**
+
+소스 listings 을 읽는 것과, 그 코드가 원래 동작하도록 만들어진 1981 년 하드웨어에서
+부팅되는 것을 보는 것은 다른 경험입니다. Paterson listings 에는 커널 (IBMDOS) 은 있지만
+주변 glue — 부트섹터, ROM-BIOS 와 통신하는 IBMBIO BIOS layer — 는 listings 에 포함되어
+있지 않습니다. 그래서 본 프로젝트는:
+
+1. Paterson 소스를 SCP ASM 2.43 으로 어셈블해 IBMDOS 커널 빌드
+2. 부트섹터와 IBMBIO 를 직접 작성 (86-DOS DOSIO.ASM 의 레지스터 수준 컨벤션 참고)
+3. 1981 년 IBM PC-DOS 1.00 디스켓과 동일 지오메트리 (160KB SSDD) 의 이미지로 패키징
+4. 86Box 에뮬레이터에서 1차 검증 후, **1981 년 8월 첫 출하 5150 에 들어간 04/24/81
+   BIOS (U33 ROM `1501476`) 를 가진 실기** 에서 최종 부팅 검증
+
+결과: 1981 년 IBM PC 사용자가 봤을 byte-level boot sequence 가, 공개 archive 된 listings
+에서 원시대 하드웨어에서 그대로 재현됨.
+
+---
+
 ## 1. 프로젝트 개요
 
 ### 목표

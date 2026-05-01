@@ -6,6 +6,38 @@
 
 [한국어 문서](PROJECT.md) — 자세한 개발 과정 기록 (Korean detailed log)
 
+## Background and motivation
+
+The upstream source listings live at
+[**DOS-History/Paterson-Listings**](https://github.com/DOS-History/Paterson-Listings)
+— a community-maintained archive of Tim Paterson's pre-IBM 86-DOS / PC-DOS
+1.00 development source code, scanned and transcribed from the original
+1980-1981 paper listings. The repository preserves several snapshots of the
+DOS kernel as it evolved at Seattle Computer Products (86-DOS) and into the
+earliest IBM-shipped PC-DOS, including the 1981-07-07 version this project
+builds against.
+
+**This project's intent was simple: I wanted to run that code on a real IBM
+5150.**
+
+Reading source listings is one thing; watching the same bytes come alive on
+the hardware they were originally written for is another. The Paterson
+listings give us the kernel (IBMDOS), but the surrounding glue — the boot
+sector, the IBMBIO BIOS layer that talks to ROM-BIOS — is not in those
+listings. So this project:
+
+1. Builds the kernel from Paterson's source via SCP ASM 2.43.
+2. Hand-writes the boot sector and IBMBIO from scratch, matching the
+   register-level conventions documented in 86-DOS DOSIO.ASM.
+3. Packages them into a 160 KB SSDD floppy image identical in geometry to a
+   1981 IBM PC-DOS 1.00 diskette.
+4. Verifies it boots in 86Box, then on a real 5150 with the original
+   first-revision 04/24/81 BIOS — the same ROM that shipped on the very
+   first PC 5150 units in August 1981.
+
+End result: the same byte-level boot sequence a 1981 IBM PC user would have
+seen, reproduced from publicly archived listings on original-era hardware.
+
 ## What this project does
 
 Builds a bootable IBM 5150 floppy image where every code layer below COMMAND.COM
